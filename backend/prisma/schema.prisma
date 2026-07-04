@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  companies Company[]
+  createdAt DateTime  @default(now())
+}
+
+model Company {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  gstNumber     String?
+  address       String?
+  state         String?
+  phone         String?
+  email         String?
+  financialYear String?
+  customers     Customer[]
+  suppliers     Supplier[]
+  items         Item[]
+  purchases     PurchaseVoucher[]
+  sales         SalesVoucher[]
+  invoices      Invoice[]
+  inventoryTx   InventoryTransaction[]
+  createdAt     DateTime   @default(now())
+  @@index([userId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  mobile         String?
+  email          String?
+  address        String?
+  gstNumber      String?
+  openingBalance Float    @default(0)
+  outstanding    Float    @default(0)
+  sales          SalesVoucher[]
+  createdAt      DateTime @default(now())
+  @@index([companyId])
+}
+
+model Supplier {
+  id             String   @id @default(cuid())
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  mobile         String?
+  email          String?
+  address        String?
+  gstNumber      String?
+  openingBalance Float    @default(0)
+  outstanding    Float    @default(0)
+  purchases      PurchaseVoucher[]
+  createdAt      DateTime @default(now())
+  @@index([companyId])
+}
+
+model Item {
+  id              String   @id @default(cuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name            String
+  sku             String
+  hsnCode         String?
+  unit            String   @default("PCS")
+  purchasePrice   Float    @default(0)
+  sellingPrice    Float    @default(0)
+  gstPercentage   Float    @default(18)
+  openingQuantity Float    @default(0)
+  currentStock    Float    @default(0)
+  purchaseItems   PurchaseItem[]
+  salesItems      SalesItem[]
+  inventoryTx     InventoryTransaction[]
+  createdAt       DateTime @default(now())
+  @@index([companyId])
+}
+
+model PurchaseVoucher {
+  id           String         @id @default(cuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplierId   String
+  supplier     Supplier       @relation(fields: [supplierId], references: [id])
+  voucherNo    String
+  date         DateTime       @default(now())
+  subtotal     Float          @default(0)
+  gstTotal     Float          @default(0)
+  total        Float          @default(0)
+  notes        String?
+  items        PurchaseItem[]
+  createdAt    DateTime       @default(now())
+  @@index([companyId])
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  voucherId  String
+  voucher    PurchaseVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       Item     @relation(fields: [itemId], references: [id])
+  quantity   Float
+  rate       Float
+  gst        Float
+  amount     Float
+}
+
+model SalesVoucher {
+  id          String      @id @default(cuid())
+  companyId   String
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  voucherNo   String
+  date        DateTime    @default(now())
+  subtotal    Float       @default(0)
+  gstTotal    Float       @default(0)
+  total       Float       @default(0)
+  notes       String?
+  items       SalesItem[]
+  invoice     Invoice?
+  createdAt   DateTime    @default(now())
+  @@index([companyId])
+}
+
+model SalesItem {
+  id        String @id @default(cuid())
+  voucherId String
+  voucher   SalesVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item   @relation(fields: [itemId], references: [id])
+  quantity  Float
+  rate      Float
+  gst       Float
+  amount    Float
+}
+
+model Invoice {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salesId      String   @unique
+  sales        SalesVoucher @relation(fields: [salesId], references: [id], onDelete: Cascade)
+  invoiceNo    String
+  type         String   @default("GST")
+  createdAt    DateTime @default(now())
+}
+
+model InventoryTransaction {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id])
+  type      String   // IN | OUT
+  quantity  Float
+  reference String?
+  createdAt DateTime @default(now())
+  @@index([companyId, itemId])
+}
